@@ -43,6 +43,28 @@
         tools:ignore="RtlHardcoded"
         tools:text="1:09:10"/>
 
+    <TextView
+        android:id="@+id/itemWatchedView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@id/itemThumbnailView"
+        android:layout_alignRight="@id/itemThumbnailView"
+        android:layout_marginBottom="@dimen/video_item_search_duration_margin"
+        android:layout_marginLeft="@dimen/video_item_search_duration_margin"
+        android:background="@color/duration_background_color"
+        android:paddingBottom="@dimen/video_item_search_duration_vertical_padding"
+        android:paddingLeft="@dimen/video_item_search_duration_horizontal_padding"
+        android:paddingRight="@dimen/video_item_search_duration_horizontal_padding"
+        android:paddingTop="@dimen/video_item_search_duration_vertical_padding"
+        android:textAllCaps="true"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="@color/duration_text_color"
+        android:textSize="@dimen/video_item_search_duration_text_size"
+        android:text="@string/watched"
+        android:visibility="gone"
+        tools:ignore="RtlHardcoded"
+        tools:text="@string/watched"/>
+
 
     <TextView
         android:id="@+id/itemVideoTitleView"

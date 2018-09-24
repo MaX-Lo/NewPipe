@@ -52,7 +52,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.schabi.newpipe.R;
 import org.schabi.newpipe.ReCaptchaActivity;
-import org.schabi.newpipe.database.stream.StreamStatisticsEntry;
+import org.schabi.newpipe.database.history.model.StreamHistoryEntry;
 import org.schabi.newpipe.download.DownloadDialog;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.NewPipe;
@@ -139,7 +139,7 @@ public class VideoDetailFragment
     @NonNull private CompositeDisposable disposables = new CompositeDisposable();
 
     private Subscription databaseSubscription;
-    private HashSet<String> watchedVideoIds;
+    private HashSet<String> watchedStreamsURLs;
 
     private List<VideoStream> sortedVideoStreams;
     private int selectedVideoStreamIndex = -1;
@@ -213,7 +213,7 @@ public class VideoDetailFragment
         PreferenceManager.getDefaultSharedPreferences(activity)
                 .registerOnSharedPreferenceChangeListener(this);
 
-        initWatchedVideosList();
+        initWatchedStreamsURLs();
     }
 
     @Override
@@ -260,6 +260,7 @@ public class VideoDetailFragment
         if (disposables != null) disposables.clear();
         currentWorker = null;
         disposables = null;
+        databaseSubscription = null;
     }
 
     @Override
@@ -552,13 +553,17 @@ public class VideoDetailFragment
         detailControlsPopup.setOnTouchListener(getOnControlsTouchListener());
     }
 
-    private void initWatchedVideosList() {
-        watchedVideoIds = new HashSet<>();
+
+    /**
+     * get for each stream in the history its URL and store them in watchedStreamsURLs
+     */
+    private void initWatchedStreamsURLs() {
+        watchedStreamsURLs = new HashSet<>();
 
         HistoryRecordManager recordManager = new HistoryRecordManager(getContext());
-        recordManager.getStreamStatistics()
+        recordManager.getStreamHistory()
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Subscriber<List<StreamStatisticsEntry>>() {
+                .subscribe(new Subscriber<List<StreamHistoryEntry>>() {
                     @Override
                     public void onSubscribe(Subscription s) {
                         databaseSubscription = s;
@@ -566,9 +571,9 @@ public class VideoDetailFragment
                     }
 
                     @Override
-                    public void onNext(List<StreamStatisticsEntry> streams) {
-                        for (StreamStatisticsEntry stream : streams)
-                            watchedVideoIds.add(stream.url);
+                    public void onNext(List<StreamHistoryEntry> streams) {
+                        for (StreamHistoryEntry stream : streams)
+                            watchedStreamsURLs.add(stream.url);
 
                         if (databaseSubscription != null) databaseSubscription.request(1);
                     }
@@ -670,17 +675,23 @@ public class VideoDetailFragment
 
         if (info.getRelatedStreams() != null
                 && !info.getRelatedStreams().isEmpty() && showRelatedStreams) {
-            //long first = System.nanoTime(), each;
+
             int to = info.getRelatedStreams().size() >= INITIAL_RELATED_VIDEOS
                     ? INITIAL_RELATED_VIDEOS
                     : info.getRelatedStreams().size();
             for (int i = 0; i < to; i++) {
                 InfoItem item = info.getRelatedStreams().get(i);
-                //each = System.nanoTime();
-                relatedStreamsView.addView(infoItemBuilder.buildView(relatedStreamsView, item));
-                //if (DEBUG) Log.d(TAG, "each took " + ((System.nanoTime() - each) / 1000000L) + "ms");
+                View miniInfoItemView = infoItemBuilder.buildView(relatedStreamsView, item);
+
+                // mark already watched streams with a "watched" overlay on the thumbnail
+                if (watchedStreamsURLs.contains(item.getUrl())) {
+                    miniInfoItemView.findViewById(R.id.itemWatchedView).setVisibility(View.VISIBLE);
+                } else {
+                    miniInfoItemView.findViewById(R.id.itemWatchedView).setVisibility(View.GONE);
+                }
+
+                relatedStreamsView.addView(miniInfoItemView);
             }
-            //if (DEBUG) Log.d(TAG, "Total time " + ((System.nanoTime() - first) / 1000000L) + "ms");
 
             relatedStreamRootLayout.setVisibility(View.VISIBLE);
             relatedStreamExpandButton.setVisibility(View.VISIBLE);
@@ -1222,6 +1233,7 @@ public class VideoDetailFragment
             thumbsDisabledTextView.setVisibility(View.GONE);
         }
 
+        // show stream duration as an overlay on the thumbnail
         if (info.getDuration() > 0) {
             detailDurationView.setText(Localization.getDurationString(info.getDuration()));
             detailDurationView.setBackgroundColor(ContextCompat.getColor(activity, R.color.duration_background_color));
@@ -1234,7 +1246,8 @@ public class VideoDetailFragment
             detailDurationView.setVisibility(View.GONE);
         }
 
-        if (watchedVideoIds.contains(info.getUrl())) {
+        // mark already watched streams with a "watched" overlay on the thumbnail
+        if (watchedStreamsURLs.contains(info.getUrl())) {
             detailWasWatchedView.setText(R.string.watched);
             detailWasWatchedView.setBackgroundColor(ContextCompat.getColor(activity, R.color.watched_background_color));
             animateView(detailWasWatchedView, true, 100);

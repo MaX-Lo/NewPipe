@@ -96,7 +96,7 @@ public class HistoryRecordManager {
 
 
     /**
-     * delete a single stream from the history
+     * deletes a single stream entry from the history
      *
      * @param streamId - streamId corresponding to the entry that should get deleted
      */
@@ -105,6 +105,23 @@ public class HistoryRecordManager {
                 .subscribeOn(Schedulers.io());
     }
 
+    /**
+     * deletes all given entries from the history
+     *
+     * @param entries - entries to delete
+     */
+    public Single<Integer> deleteStreamHistory(final Collection<StreamHistoryEntry> entries) {
+        List<StreamHistoryEntity> entities = new ArrayList<>(entries.size());
+        for (final StreamHistoryEntry entry : entries) {
+            entities.add(entry.toStreamHistoryEntity());
+        }
+        return Single.fromCallable(() -> streamHistoryTable.delete(entities))
+                .subscribeOn(Schedulers.io());
+    }
+
+    /**
+     * deletes all entries from the history
+     */
     public Single<Integer> deleteWholeStreamHistory() {
         return Single.fromCallable(() -> streamHistoryTable.deleteAll())
                 .subscribeOn(Schedulers.io());
@@ -127,15 +144,12 @@ public class HistoryRecordManager {
                 .subscribeOn(Schedulers.io());
     }
 
-    public Single<Integer> deleteStreamHistory(final Collection<StreamHistoryEntry> entries) {
-        List<StreamHistoryEntity> entities = new ArrayList<>(entries.size());
-        for (final StreamHistoryEntry entry : entries) {
-            entities.add(entry.toStreamHistoryEntity());
-        }
-        return Single.fromCallable(() -> streamHistoryTable.delete(entities))
-                .subscribeOn(Schedulers.io());
-    }
 
+    /**
+     * Returns whether history is enabled or not
+     *
+     * @return true - enabled, false - disabled
+     */
     private boolean isStreamHistoryEnabled() {
         return sharedPreferences.getBoolean(streamHistoryKey, false);
     }
