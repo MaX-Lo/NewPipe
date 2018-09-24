@@ -94,6 +94,12 @@ public class HistoryRecordManager {
         })).subscribeOn(Schedulers.io());
     }
 
+
+    /**
+     * delete a single stream from the history
+     *
+     * @param streamId - streamId corresponding to the entry that should get deleted
+     */
     public Single<Integer> deleteStreamHistory(final long streamId) {
         return Single.fromCallable(() -> streamHistoryTable.deleteStreamHistory(streamId))
                 .subscribeOn(Schedulers.io());

@@ -36,7 +36,9 @@
 
     <!-- Miscellaneous -->
     <color name="drawer_header_font_color">#ddffffff</color>
-    <color name="duration_background_color">#aa000000</color>
+    <color name="duration_background_color">@color/thumbnail_text_overlay_dark_background_color</color>
+    <color name="watched_background_color">@color/thumbnail_text_overlay_dark_background_color</color>
+    <color name="thumbnail_text_overlay_dark_background_color">#aa000000</color>
     <color name="live_duration_background_color">#c8E53935</color>
     <color name="playlist_stream_count_background_color">#e6000000</color>
     <color name="duration_text_color">#EEFFFFFF</color>

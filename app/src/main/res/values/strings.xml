@@ -120,6 +120,7 @@
     <string name="video_is_age_restricted">Age Restricted Video. Allowing such material is possible from Settings.</string>
     <string name="duration_live">live</string>
     <string name="duration_live_button" translatable="false">LIVE</string>
+    <string name="watched" translatable="true">WATCHED</string>
     <string name="downloads">Downloads</string>
     <string name="downloads_title">Downloads</string>
     <string name="error_report_title">Error report</string>

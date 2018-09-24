@@ -48,8 +48,11 @@ import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.listener.ImageLoadingListener;
 import com.nostra13.universalimageloader.core.listener.SimpleImageLoadingListener;
 
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.schabi.newpipe.R;
 import org.schabi.newpipe.ReCaptchaActivity;
+import org.schabi.newpipe.database.stream.StreamStatisticsEntry;
 import org.schabi.newpipe.download.DownloadDialog;
 import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.NewPipe;
@@ -92,6 +95,7 @@ import org.schabi.newpipe.util.ThemeHelper;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -134,6 +138,9 @@ public class VideoDetailFragment
     private Disposable currentWorker;
     @NonNull private CompositeDisposable disposables = new CompositeDisposable();
 
+    private Subscription databaseSubscription;
+    private HashSet<String> watchedVideoIds;
+
     private List<VideoStream> sortedVideoStreams;
     private int selectedVideoStreamIndex = -1;
 
@@ -163,6 +170,7 @@ public class VideoDetailFragment
     private TextView detailControlsDownload;
     private TextView appendControlsDetail;
     private TextView detailDurationView;
+    private TextView detailWasWatchedView;
 
     private LinearLayout videoDescriptionRootLayout;
     private TextView videoUploadDateView;
@@ -182,7 +190,6 @@ public class VideoDetailFragment
     private LinearLayout relatedStreamRootLayout;
     private LinearLayout relatedStreamsView;
     private ImageButton relatedStreamExpandButton;
-
 
     /*////////////////////////////////////////////////////////////////////////*/
 
@@ -205,6 +212,8 @@ public class VideoDetailFragment
                 .getBoolean(getString(R.string.show_next_video_key), true);
         PreferenceManager.getDefaultSharedPreferences(activity)
                 .registerOnSharedPreferenceChangeListener(this);
+
+        initWatchedVideosList();
     }
 
     @Override
@@ -480,6 +489,8 @@ public class VideoDetailFragment
         detailControlsDownload = rootView.findViewById(R.id.detail_controls_download);
         appendControlsDetail = rootView.findViewById(R.id.touch_append_detail);
         detailDurationView = rootView.findViewById(R.id.detail_duration_view);
+        detailWasWatchedView = rootView.findViewById(R.id.detail_was_watched_view);
+
 
         videoDescriptionRootLayout = rootView.findViewById(R.id.detail_description_root_layout);
         videoUploadDateView = rootView.findViewById(R.id.detail_upload_date_view);
@@ -539,6 +550,38 @@ public class VideoDetailFragment
         detailControlsPopup.setOnLongClickListener(this);
         detailControlsBackground.setOnTouchListener(getOnControlsTouchListener());
         detailControlsPopup.setOnTouchListener(getOnControlsTouchListener());
+    }
+
+    private void initWatchedVideosList() {
+        watchedVideoIds = new HashSet<>();
+
+        HistoryRecordManager recordManager = new HistoryRecordManager(getContext());
+        recordManager.getStreamStatistics()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<List<StreamStatisticsEntry>>() {
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        databaseSubscription = s;
+                        databaseSubscription.request(1);
+                    }
+
+                    @Override
+                    public void onNext(List<StreamStatisticsEntry> streams) {
+                        for (StreamStatisticsEntry stream : streams)
+                            watchedVideoIds.add(stream.url);
+
+                        if (databaseSubscription != null) databaseSubscription.request(1);
+                    }
+
+                    @Override
+                    public void onError(Throwable exception) {
+                        VideoDetailFragment.this.onError(exception);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                    }
+                });
     }
 
     private void showStreamDialog(final StreamInfoItem item) {
@@ -961,7 +1004,7 @@ public class VideoDetailFragment
         NavigationHelper.playOnExternalPlayer(context, currentInfo.getName(),
                 currentInfo.getUploaderName(), selectedStream);
 
-        final HistoryRecordManager recordManager = new HistoryRecordManager(requireContext());
+        final HistoryRecordManager recordManager = new HistoryRecordManager(getContext());
         disposables.add(recordManager.onViewed(info).onErrorComplete()
                 .subscribe(
                         ignored -> {/* successful */},
@@ -1108,6 +1151,7 @@ public class VideoDetailFragment
         animateView(spinnerToolbar, false, 200);
         animateView(thumbnailPlayButton, false, 50);
         animateView(detailDurationView, false, 100);
+        animateView(detailWasWatchedView, false, 100);
 
         videoTitleTextView.setText(name != null ? name : "");
         videoTitleTextView.setMaxLines(1);
@@ -1188,6 +1232,14 @@ public class VideoDetailFragment
             animateView(detailDurationView, true, 100);
         } else {
             detailDurationView.setVisibility(View.GONE);
+        }
+
+        if (watchedVideoIds.contains(info.getUrl())) {
+            detailWasWatchedView.setText(R.string.watched);
+            detailWasWatchedView.setBackgroundColor(ContextCompat.getColor(activity, R.color.watched_background_color));
+            animateView(detailWasWatchedView, true, 100);
+        } else {
+            detailWasWatchedView.setVisibility(View.GONE);
         }
 
         videoTitleRoot.setClickable(true);
